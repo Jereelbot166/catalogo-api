@@ -1,0 +1,104 @@
+---
+// src/pages/index.astro
+import Layout from "../layouts/Layout.astro";
+import ProductoCard from "../components/ProductoCard.astro";
+
+interface Producto {
+  id: number;
+  title: string;
+  price: number;
+  category: string;
+  rating: number;
+  thumbnail: string;
+}
+
+let productos: Producto[] = [];
+let mensajeError = "";
+
+try {
+  const respuesta = await fetch("https://dummyjson.com/products?limit=12");
+  if (!respuesta.ok) {
+    throw new Error(`Error HTTP: ${respuesta.status}`);
+  }
+  const datos = await respuesta.json();
+  productos = datos.products ?? [];
+} catch (error) {
+  console.error("Error al consultar la API:", error);
+  mensajeError = "No fue posible cargar los productos.";
+}
+---
+
+<Layout title="Catálogo de productos">
+  <main>
+    <h1>Catálogo de productos</h1>
+    <p class="subtitle">Explora nuestro catálogo de demostración.</p>
+
+    <!-- Campo de búsqueda -->
+    <div class="search-container">
+      <label for="buscador">Buscar producto</label>
+      <input id="buscador" type="search" placeholder="Escribe un nombre..." />
+    </div>
+
+    <!-- Mensaje de error al consultar API -->
+    {mensajeError && <p class="error-message" role="alert">{mensajeError}</p>}
+
+    <!-- Renderización de productos en Grid -->
+    {
+      productos.length > 0 ? (
+        <section class="grid-productos" id="contenedor-productos">
+          {productos.map((producto) => (
+            <ProductoCard
+              title={producto.title}
+              price={producto.price}
+              category={producto.category}
+              rating={producto.rating}
+              thumbnail={producto.thumbnail}
+            />
+          ))}
+        </section>
+      ) : (
+        !mensajeError && <p class="no-results">No hay productos disponibles.</p>
+      )
+    }
+
+    <!-- Mensaje cuando la búsqueda no encuentra coincidencias -->
+    <p id="sin-resultados" class="no-results" hidden>
+      No se encontraron productos que coincidan con la búsqueda.
+    </p>
+  </main>
+</Layout>
+
+<script>
+  // Script ejecutable en el navegador para filtrado en tiempo real
+  const buscador = document.querySelector<HTMLInputElement>("#buscador");
+  const tarjetas = document.querySelectorAll<HTMLElement>(".producto");
+  const mensajeSinResultados = document.querySelector<HTMLElement>("#sin-resultados");
+
+  if (buscador) {
+    buscador.addEventListener("input", () => {
+      const texto = buscador.value.toLowerCase().trim();
+      let visibles = 0;
+ 
+      tarjetas.forEach((tarjeta) => {
+        const titulo = tarjeta.dataset.title || "";
+        const coincide = titulo.includes(texto);
+
+        if (coincide) {
+          tarjeta.removeAttribute("hidden");
+          visibles++;
+        } else {
+          tarjeta.setAttribute("hidden", "true");
+        }
+      });
+
+      // Muestra o esconde mensaje si no hay tarjetas visibles
+      if (mensajeSinResultados) {
+        if (visibles === 0 && tarjetas.length > 0) {
+          mensajeSinResultados.removeAttribute("hidden");
+        } else {
+          mensajeSinResultados.setAttribute("hidden", "true");
+        }
+      }
+    });
+  }
+</script>
